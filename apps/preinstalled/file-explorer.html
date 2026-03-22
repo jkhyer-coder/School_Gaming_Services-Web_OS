@@ -2,24 +2,27 @@
 <html>
 <head>
     <style>
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #fff; }
-        #sidebar { width: 200px; background: #f3f3f3; border-right: 1px solid #ccc; padding: 10px; display:flex; flex-direction:column;}
-        .nav-item { padding: 10px; cursor: pointer; border-radius: 4px; margin-bottom:5px;}
-        .nav-item:hover, .nav-item.active { background: #e5e5e5; }
-        #content { flex: 1; padding: 20px; overflow-y: auto; position: relative; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #202020; color: #ffffff;}
+        #sidebar { width: 220px; background: #191919; border-right: 1px solid rgba(255,255,255,0.08); padding: 15px 10px; display:flex; flex-direction:column;}
+        .nav-item { padding: 10px; cursor: pointer; border-radius: 4px; margin-bottom:5px; font-size: 14px;}
+        .nav-item:hover { background: rgba(255,255,255,0.06); }
+        .nav-item.active { background: rgba(255,255,255,0.1); font-weight: 600; }
+        #content { flex: 1; padding: 25px; overflow-y: auto; position: relative; }
+        h2 { margin-top: 0; font-size: 20px; font-weight: 500;}
         .file-list { display: flex; flex-direction: column; gap: 5px; }
-        .file-item { padding: 10px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; cursor: pointer;}
-        .file-item:hover { background: #f9f9f9; }
-        #drop-zone { position: absolute; top:0;left:0;right:0;bottom:0; background: rgba(0,120,212,0.1); border: 2px dashed #0078D4; display:none; justify-content:center; align-items:center; z-index:10; font-size: 20px;}
-        button { padding: 5px 10px; background: #0078D4; color:white; border:none; border-radius:4px; cursor:pointer;}
-        button:hover { background: #005a9e; }
-        .import-btn { margin-top: auto; }
+        .file-item { padding: 12px; border: 1px solid rgba(255,255,255,0.05); background: #2d2d2d; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; cursor: pointer; transition: 0.1s;}
+        .file-item:hover { background: #333333; }
+        #drop-zone { position: absolute; top:0;left:0;right:0;bottom:0; background: rgba(96, 205, 255, 0.1); border: 2px dashed #60cdff; display:none; justify-content:center; align-items:center; z-index:10; font-size: 20px;}
+        button { padding: 6px 14px; background: rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.1); border-radius:4px; cursor:pointer;}
+        button:hover { background: rgba(255,255,255,0.15); }
+        .import-btn { margin-top: auto; background: #0078D4; border:none;}
+        .import-btn:hover { background: #006abc; }
     </style>
 </head>
 <body>
     <div id="sidebar">
-        <div class="nav-item active" id="nav-imported">Imported Files</div>
-        <div class="nav-item" id="nav-desktop">Desktop</div>
+        <div class="nav-item active" id="nav-imported">📁 Imported Files</div>
+        <div class="nav-item" id="nav-desktop">🖥️ Desktop Apps</div>
         
         <input type="file" id="file-input" style="display:none" multiple>
         <button class="import-btn" onclick="document.getElementById('file-input').click()">Import File</button>
@@ -53,8 +56,9 @@
                     if(app.preinstalled || OS.installedApps.includes(app.id)) {
                         const div = document.createElement('div');
                         div.className = 'file-item';
-                        div.innerHTML = `<span>🖥️ ${app.name}.exe</span> <button onclick="OS.openWindow('${app.name}', '${app.path}'); event.stopPropagation();">Run</button>`;
-                        div.onclick = () => OS.openWindow(app.name, app.path);
+                        // Pass app.id to correctly show active state on taskbar
+                        div.innerHTML = `<span>⚙️ ${app.name}.exe</span> <button onclick="OS.openWindow('${app.name}', '${app.path}', null, '${app.id}'); event.stopPropagation();">Run</button>`;
+                        div.onclick = () => OS.openWindow(app.name, app.path, null, app.id);
                         list.appendChild(div);
                     }
                 });

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif;}
+        .toolbar { padding: 10px; background: #eee; border-bottom: 1px solid #ccc; display: flex; gap: 10px; }
+        .container { display: flex; flex: 1; overflow: hidden; position:relative;}
+        textarea { flex: 1; border: none; padding: 10px; resize: none; border-right: 1px solid #ccc; outline: none; font-family: monospace; white-space: pre; background:#282c34; color:#abb2bf;}
+        iframe { flex: 1; border: none; background: white; pointer-events: none;}
+        #drop-zone { position:absolute; top:0; left:0; width:50%; height:100%; background:rgba(0,120,212,0.3); border:2px dashed #0078D4; display:none; z-index:10;}
+        button { padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="importVFS()">Import from File Explorer</button>
+        <button onclick="exportLocal()">Export to Device Storage</button>
+        <span id="status" style="margin-left:auto; color:#0078D4; font-size: 13px; align-self:center;"></span>
+    </div>
+    <div class="container">
+        <div id="drop-zone"></div>
+        <textarea id="editor" placeholder="Type or drop HTML/TXT code here..."></textarea>
+        <iframe id="preview"></iframe>
+    </div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const dropZone = document.getElementById('drop-zone');
+        const VFS = window.parent.VFS;
+        let currentFile = null;
+
+        function updatePreview() {
+            preview.srcdoc = editor.value;
+            if(currentFile) {
+                VFS.saveFile(currentFile, 'text/html', editor.value);
+                document.getElementById('status').innerText = 'Auto-saved to ' + currentFile;
+                setTimeout(() => document.getElementById('status').innerText = '', 2000);
+            }
+        }
+
+        editor.addEventListener('input', updatePreview);
+
+        async function importVFS() {
+            const files = await VFS.getFiles();
+            const htmlFiles = files.filter(f => f.name.endsWith('.html') || f.name.endsWith('.txt'));
+            if(htmlFiles.length === 0) return alert('No HTML/TXT files found in File Explorer -> Imported Files.');
+            
+            const names = htmlFiles.map(f => f.name).join('\n');
+            const target = prompt('Type filename to import exactly as shown:\n\n' + names);
+            const file = htmlFiles.find(f => f.name === target);
+            if(file) {
+                editor.value = file.content;
+                currentFile = file.name;
+                updatePreview();
+            }
+        }
+
+        function exportLocal() {
+            const blob = new Blob([editor.value], {type: 'text/html'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (currentFile || 'exported_code.html');
+            a.click();
+        }
+
+        // Drag and Drop
+        document.querySelector('.container').ondragover = (e) => { e.preventDefault(); dropZone.style.display = 'block'; };
+        dropZone.ondragleave = (e) => { e.preventDefault(); dropZone.style.display = 'none'; };
+        dropZone.ondrop = (e) => { 
+            e.preventDefault(); dropZone.style.display = 'none'; 
+            const file = e.dataTransfer.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                editor.value = ev.target.result;
+                currentFile = file.name;
+                updatePreview();
+            };
+            reader.readAsText(file);
+        };
+    </script>
+</body>
+</html>

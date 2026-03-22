@@ -2,9 +2,8 @@ let topZ = 100;
 let installedApps = JSON.parse(localStorage.getItem('installedApps') || '[]');
 let appRegistry = [];
 
-// App state management for Taskbar
-let openWindows = []; // Tracks { winElement, appId }
-const pinnedApps = ['file-explorer']; // Pre-pinned apps
+let openWindows = []; 
+const pinnedApps = ['file-explorer']; 
 
 document.addEventListener('contextmenu', e => { e.preventDefault(); hideContextMenu(); });
 document.addEventListener('click', hideContextMenu);
@@ -22,16 +21,14 @@ async function initOS() {
 
     renderDesktop();
     renderAppStore();
-    renderTaskbar(); // Initialize taskbar
+    renderTaskbar(); 
     
-    // Clock
     setInterval(() => {
         const d = new Date();
         document.getElementById('clock-time').innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         document.getElementById('clock-date').innerText = d.toLocaleDateString();
     }, 1000);
 
-    // Start Menu toggle closing
     document.body.addEventListener('click', (e) => {
         if(!e.target.closest('#start-menu') && !e.target.closest('#start-btn')) {
             document.getElementById('start-menu').classList.add('hidden');
@@ -41,11 +38,46 @@ async function initOS() {
     window.addEventListener('vfs-updated', renderDesktop);
 }
 
+// ==========================================
+// ICON GENERATOR (Supports emoji, png, jpg)
+// ==========================================
+function getAppIconHTML(app, isSmall = false) {
+    const fallbackClass = isSmall ? 'icon-placeholder-small' : 'icon-placeholder';
+    
+    // 1. If an explicit emoji or icon is listed in apps.json
+    if (app.icon) {
+        // If it's a short string (emoji)
+        if (app.icon.length <= 2) {
+            return `<div class="${fallbackClass}" style="background: transparent; font-size: ${isSmall ? '18px' : '36px'}; box-shadow: none;">${app.icon}</div>`;
+        } 
+        // If it's a direct URL
+        return `<img src="${app.icon}" class="${fallbackClass}" style="background: transparent; box-shadow: none; object-fit: contain;">`;
+    }
+    
+    // 2. Auto-Detect PNG / JPG from the icons folder!
+    const pathParts = app.path.split('/');
+    const fileName = pathParts.pop(); 
+    const folderPath = pathParts.join('/'); 
+    const baseName = fileName.replace('.html', ''); 
+    
+    const pngPath = `${folderPath}/icons/${baseName}.png`;
+    const jpgPath = `${folderPath}/icons/${baseName}.jpg`;
+    const letter = app.name.charAt(0);
+    
+    // This clever onerror hack tries .png, then .jpg, then falls back to the letter box without needing a backend server
+    return `<img src="${pngPath}" class="${fallbackClass}" style="background: transparent; box-shadow: none; object-fit: contain;" 
+        onerror="this.onerror=null; this.src='${jpgPath}'; this.onerror=function(){ 
+            const d = document.createElement('div'); 
+            d.className='${fallbackClass}'; 
+            d.innerText='${letter}'; 
+            this.parentNode.replaceChild(d, this); 
+        }">`;
+}
+
 function renderTaskbar() {
     const taskbar = document.getElementById('taskbar-icons');
-    taskbar.innerHTML = ''; // Clear taskbar
+    taskbar.innerHTML = ''; 
     
-    // 1. Add Start Button
     const startBtn = document.createElement('div');
     startBtn.className = 'taskbar-icon start-btn';
     startBtn.id = 'start-btn';
@@ -56,31 +88,29 @@ function renderTaskbar() {
     };
     taskbar.appendChild(startBtn);
 
-    // 2. Determine apps to show (Pinned + Currently Open)
     const activeAppIds = [...new Set(openWindows.filter(w => w.appId !== null).map(w => w.appId))];
     const appsToShow = [...new Set([...pinnedApps, ...activeAppIds])];
 
-    // 3. Render App Icons
     appsToShow.forEach(appId => {
         const app = appRegistry.find(a => a.id === appId);
         if(!app) return;
 
         const isOpen = activeAppIds.includes(appId);
-        // Determine if it's the top-most active window
         const isActive = openWindows.length > 0 && openWindows[openWindows.length - 1].appId === appId;
 
         const btn = document.createElement('div');
         btn.className = `taskbar-icon ${isOpen ? 'is-open active-app' : ''} ${isActive ? 'is-active' : ''}`;
-        btn.innerHTML = `<div class="icon-placeholder-small">${app.name.charAt(0)}</div>`;
+        
+        // Inject dynamic small icon
+        btn.innerHTML = getAppIconHTML(app, true);
         
         btn.onclick = () => {
             if (isOpen) {
-                // Find highest z-index window of this app and bring to front
                 const appWins = openWindows.filter(w => w.appId === appId);
                 const targetWin = appWins[appWins.length - 1].winElement;
                 bringToFront(targetWin);
             } else {
-                openWindow(app.name, app.path, null, app.id);
+                openWindow(app, app.path);
             }
         };
         taskbar.appendChild(btn);
@@ -90,7 +120,6 @@ function renderTaskbar() {
 function bringToFront(win) {
     topZ++;
     win.style.zIndex = topZ;
-    // Move to end of openWindows array to track as "most recently active"
     const index = openWindows.findIndex(w => w.winElement === win);
     if(index !== -1) {
         const obj = openWindows.splice(index, 1)[0];
@@ -107,8 +136,9 @@ function renderDesktop() {
         if(app.preinstalled || installedApps.includes(app.id)) {
             const icon = document.createElement('div');
             icon.className = 'desktop-icon';
-            icon.innerHTML = `<div class="icon-placeholder">${app.name.charAt(0)}</div><span>${app.name}</span>`;
-            icon.onclick = () => openWindow(app.name, app.path, null, app.id);
+            // Inject dynamic desktop icon
+            icon.innerHTML = `${getAppIconHTML(app, false)}<span>${app.name}</span>`;
+            icon.onclick = () => openWindow(app, app.path);
             icon.oncontextmenu = (e) => showContextMenu(e, 'app', app);
             desktop.appendChild(icon);
         }
@@ -143,7 +173,7 @@ function renderAppStore() {
             if(app.preinstalled) return; 
             const btn = document.createElement('div');
             btn.className = 'desktop-icon';
-            btn.innerHTML = `<div class="icon-placeholder">${app.name.charAt(0)}</div><span>${app.name}</span>`;
+            btn.innerHTML = `${getAppIconHTML(app, false)}<span>${app.name}</span>`;
             
             btn.onclick = () => {
                 if(!installedApps.includes(app.id)) {
@@ -164,20 +194,24 @@ function renderAppStore() {
     });
 }
 
-// Added appId tracking to the window generator
-function openWindow(title, url, contentHTML = null, appId = null) {
+// Accepts full App Object OR string title
+function openWindow(appOrTitle, url, contentHTML = null, fallbackAppId = null) {
+    const title = typeof appOrTitle === 'string' ? appOrTitle : appOrTitle.name;
+    const appId = typeof appOrTitle === 'string' ? fallbackAppId : appOrTitle.id;
+    const headerIconHTML = typeof appOrTitle === 'string' ? '' : getAppIconHTML(appOrTitle, true);
+
     const win = document.createElement('div');
     win.className = 'window';
-    win.style.width = '700px';
-    win.style.height = '500px';
+    win.style.width = '800px';
+    win.style.height = '550px';
     win.style.left = '150px';
-    win.style.top = '100px';
+    win.style.top = '80px';
     topZ++;
     win.style.zIndex = topZ;
 
     win.innerHTML = `
         <div class="window-header">
-            <div class="window-title">${title}</div>
+            <div class="window-title">${headerIconHTML} ${title}</div>
             <div class="window-controls">
                 <div class="win-btn minimize" style="font-size: 16px;">—</div>
                 <div class="win-btn box" style="font-size: 16px;">□</div>
@@ -192,7 +226,6 @@ function openWindow(title, url, contentHTML = null, appId = null) {
 
     document.body.appendChild(win);
     
-    // Register Window in Taskbar
     openWindows.push({ winElement: win, appId: appId });
     renderTaskbar();
 
@@ -200,7 +233,7 @@ function openWindow(title, url, contentHTML = null, appId = null) {
     let isDown = false, startX, startY, winX, winY;
 
     header.addEventListener('mousedown', e => {
-        if(e.target.closest('.window-controls')) return; // Ignore dragging if clicking buttons
+        if(e.target.closest('.window-controls')) return; 
         isDown = true;
         bringToFront(win);
         startX = e.clientX; startY = e.clientY;
@@ -224,21 +257,20 @@ function openWindow(title, url, contentHTML = null, appId = null) {
     win.querySelector('.close').onclick = () => {
         win.remove();
         openWindows = openWindows.filter(w => w.winElement !== win);
-        renderTaskbar(); // Remove pill indicator
+        renderTaskbar(); 
     };
     
-    // Minimize simply acts like clicking out, real minimization involves display:none. Kept simple:
     win.querySelector('.minimize').onclick = () => {
-        win.style.zIndex = 1; // Send to back
+        win.style.zIndex = 1; 
         renderTaskbar();
     };
 
     win.querySelector('.box').onclick = () => {
         if(win.style.width === '100%') {
-            win.style.width = '700px'; win.style.height = '500px';
-            win.style.left = '150px'; win.style.top = '100px';
+            win.style.width = '800px'; win.style.height = '550px';
+            win.style.left = '150px'; win.style.top = '80px';
         } else {
-            win.style.width = '100%'; win.style.height = 'calc(100% - 48px)';
+            win.style.width = '100%'; win.style.height = 'calc(100% - 52px)';
             win.style.left = '0'; win.style.top = '0';
         }
     };
@@ -280,7 +312,7 @@ function hideContextMenu() {
 }
 
 document.getElementById('ctx-open').onclick = () => {
-    if(ctxTarget.type === 'app') openWindow(ctxTarget.data.name, ctxTarget.data.path, null, ctxTarget.data.id);
+    if(ctxTarget.type === 'app') openWindow(ctxTarget.data, ctxTarget.data.path);
     if(ctxTarget.type === 'file') openFile(ctxTarget.data);
 };
 

@@ -15,7 +15,12 @@
         <div class="start-search">
             <input type="text" placeholder="Search for apps, settings, and documents" disabled>
         </div>
-        <div class="start-header">Pinned Apps & Store</div>
+        <div class="start-header" style="display:flex; justify-content:space-between; align-items:center; padding-right:10px;">
+            <span>Pinned Apps & Store</span>
+            <button id="update-store-btn" onclick="updateAppList()" style="background:var(--accent); color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; transition:0.2s;">
+                🔄 Update App List
+            </button>
+        </div>
         <div id="store-categories"></div>
     </div>
 

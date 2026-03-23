@@ -7,19 +7,17 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- 1. Boot Screen -->
     <div id="boot-screen">
         <svg viewBox="0 0 24 24" fill="#0078D4" width="80" height="80" style="margin-bottom: 30px;"><path d="M11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4zM11.4 24H0V12.6h11.4V24zm12.6 0H12.6V12.6H24V24z"/></svg>
         <div class="boot-spinner"></div>
     </div>
 
-    <!-- Desktop Area -->
+    <!-- Desktop Area & Drag Selection Box -->
     <div id="desktop"></div>
+    <div id="selection-box" class="hidden"></div>
     
-    <!-- 2. Aero Snap Preview Glass -->
     <div id="snap-preview" class="hidden"></div>
     
-    <!-- App Store / Launcher -->
     <div id="start-menu" class="hidden">
         <div class="start-search">
             <input type="text" placeholder="Search for apps, settings, and documents" disabled>
@@ -33,7 +31,6 @@
         <div id="store-categories"></div>
     </div>
 
-    <!-- Taskbar -->
     <div id="taskbar">
         <div class="taskbar-weather">
             <span style="font-size: 16px;">☁️</span> 68°F
@@ -49,7 +46,6 @@
         </div>
     </div>
 
-    <!-- Personalize Dialog -->
     <div id="personalize-dialog" class="hidden">
         <h3>Change Wallpaper</h3>
         <input type="text" id="wallpaper-input" placeholder="Paste Image URL here...">
@@ -59,7 +55,9 @@
         </div>
     </div>
 
-    <!-- Right-Click Context Menu -->
+    <!-- System Notifications -->
+    <div id="notification-center"></div>
+
     <div id="context-menu" class="hidden">
         <div class="context-item" id="ctx-open">Open</div>
         <div class="context-item" id="ctx-download">Download to PC</div>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #0c0c0c; color: #cccccc; font-family: 'Consolas', monospace; margin: 0; padding: 10px; height: 100vh; overflow-y: auto; box-sizing: border-box;}
+        #output { white-space: pre-wrap; word-wrap: break-word; }
+        .input-line { display: flex; }
+        .prompt { margin-right: 8px; color: #00ff00;}
+        input { flex: 1; background: transparent; border: none; color: white; font-family: 'Consolas', monospace; outline: none; font-size: 14px;}
+    </style>
+</head>
+<body>
+    <div id="output">Windows Web OS [Version 1.0.0]<br>(c) Web OS Corporation. All rights reserved.<br><br>Type 'help' for commands.<br><br></div>
+    <div class="input-line">
+        <span class="prompt" id="prompt-path">C:\Users\Admin></span>
+        <input type="text" id="cmd" autocomplete="off" autofocus>
+    </div>
+
+    <script>
+        const VFS = window.parent.VFS;
+        const out = document.getElementById('output');
+        const cmd = document.getElementById('cmd');
+        let currentPath = ''; 
+
+        cmd.addEventListener('keypress', async (e) => {
+            if(e.key === 'Enter') {
+                const val = cmd.value.trim();
+                cmd.value = '';
+                print(`C:\\Users\\Admin${currentPath ? '\\' + currentPath.replace(/\//g,'\\') : ''}> ${val}`);
+                await runCommand(val);
+                document.getElementById('prompt-path').innerText = `C:\\Users\\Admin${currentPath ? '\\' + currentPath.replace(/\//g,'\\') : ''}>`;
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+        });
+
+        function print(text) { out.innerHTML += text + '<br>'; }
+
+        async function runCommand(command) {
+            const args = command.split(' ');
+            const cmdName = args[0].toLowerCase();
+            
+            if(cmdName === 'help') {
+                print('ls       - List files');
+                print('mkdir    - Create a directory (mkdir folder)');
+                print('cd       - Change directory (cd folder OR cd ..)');
+                print('clear    - Clear terminal');
+            }
+            else if (cmdName === 'clear') { out.innerHTML = ''; }
+            else if (cmdName === 'ls') {
+                const files = await VFS.getFiles();
+                let count = 0;
+                files.forEach(f => {
+                    // Check if file is inside current directory
+                    if (currentPath === '' && !f.name.includes('/')) { print(`  ${f.type === 'folder'?'[DIR]':'[FILE]'}  ${f.name}`); count++; }
+                    else if (currentPath !== '' && f.name.startsWith(currentPath + '/') && f.name.substring(currentPath.length + 1).indexOf('/') === -1) {
+                        print(`  ${f.type === 'folder'?'[DIR]':'[FILE]'}  ${f.name.split('/').pop()}`); count++;
+                    }
+                });
+                if(count===0) print('  (Empty Directory)');
+            }
+            else if (cmdName === 'mkdir' && args[1]) {
+                const path = currentPath === '' ? args[1] : `${currentPath}/${args[1]}`;
+                await VFS.saveFile(path, 'folder', '');
+                print(`Directory created.`);
+            }
+            else if (cmdName === 'cd') {
+                if(!args[1]) return;
+                if(args[1] === '..') {
+                    if(currentPath !== '') currentPath = currentPath.split('/').slice(0, -1).join('/');
+                } else {
+                    const target = currentPath === '' ? args[1] : `${currentPath}/${args[1]}`;
+                    const files = await VFS.getFiles();
+                    if(files.find(f => f.name === target && f.type === 'folder')) currentPath = target;
+                    else print('Directory not found.');
+                }
+            }
+            else if (cmdName !== '') print(`'${cmdName}' is not recognized as an internal command.`);
+        }
+    </script>
+</body>
+</html>
